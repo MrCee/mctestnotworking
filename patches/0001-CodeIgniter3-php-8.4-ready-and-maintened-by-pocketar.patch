@@ -1,0 +1,108 @@
+From 4928568cba9b210947aaf751462000cbc58d3e62 Mon Sep 17 00:00:00 2001
+Message-Id: <4928568cba9b210947aaf751462000cbc58d3e62.1735481122.git.thomas@sudwebdesign.fr>
+From: Thomas Ingles <thomas@sudwebdesign.fr>
+Date: Mon, 23 Sep 2024 19:34:20 +0200
+Subject: [PATCH 1/2] CodeIgniter3 php-8.4 ready and maintened by pocketarc
+
+Minor Changes to work with php 5.4 to 8.4
+
+from codeigniter/framework : 3.1.13 (automaintened)
+to https://github.com/pocketarc/codeigniter : 3.3.0
+
+Need run `composer update` or `composer install`
+
+thx CI say :
+Your system folder path does not appear to be set correctly.
+Please open the following file and correct this: `index.php`
+From: codeigniter/framework 3.1.13 (official unmaintened)
+    `$system_path = 'vendor/codeigniter/framework/system';`
+To:   pocketarc/codeigniter #3.3.0 (CI3 maintened fork php-8.4)
+    `$system_path = 'vendor/pocketarc/codeigniter/system';`
+
+Filename: MX/Controller.php (add $load class var)
++ Old Fix: Creation of dynamic property Setup::$load is deprecated
++ typo indent Line Numbers: 54,55
+
+From run($module = '', $group = '') #origin CI-3.1.13
+To run($config = null, &$data = null)
++ #Fix [3.3.0](https://github.com/pocketarc/codeigniter)
+Severity: Compile Error Message:
+Declaration of MY_Form_validation::run($module = '', $group = '')
+must be compatible with
+CI_Form_validation::run($config = null, &$data = null)
+Filename: libraries/MY_Form_validation.php
+Line Number: 34
+---
+ application/libraries/MY_Form_validation.php | 6 +++---
+ application/third_party/MX/Controller.php    | 5 +++--
+ composer.json                                | 2 +-
+ index.php                                    | 2 +-
+ 4 files changed, 8 insertions(+), 7 deletions(-)
+
+diff --git a/application/libraries/MY_Form_validation.php b/application/libraries/MY_Form_validation.php
+index d454c589..09ebda71 100644
+--- a/application/libraries/MY_Form_validation.php
++++ b/application/libraries/MY_Form_validation.php
+@@ -31,9 +31,9 @@ class MY_Form_validation extends CI_Form_validation
+         return $query->num_rows() === 0;
+     }
+ 
+-    function run($module = '', $group = '')
++    function run($config = null, &$data = null)
+     {
+-        (is_object($module)) AND $this->CI = &$module;
+-        return parent::run($group);
++        (is_object($config)) AND $this->CI = &$config;
++        return parent::run($data);
+     }
+ }
+diff --git a/application/third_party/MX/Controller.php b/application/third_party/MX/Controller.php
+index 0ab2e330..2d75abef 100644
+--- a/application/third_party/MX/Controller.php
++++ b/application/third_party/MX/Controller.php
+@@ -46,13 +46,14 @@ require dirname(__FILE__) . '/Base.php';
+ class MX_Controller
+ {
+ 
++    public $load;
+     public $autoload = [];
+ 
+     public function __construct()
+     {
+ 
+-	if (CI::$APP->config->item('controller_suffix')==null) $class = str_replace('', '', get_class($this));
+-	else $class = str_replace(CI::$APP->config->item('controller_suffix'), '', get_class($this));
++    if (CI::$APP->config->item('controller_suffix')==null) $class = str_replace('', '', get_class($this));
++    else $class = str_replace(CI::$APP->config->item('controller_suffix'), '', get_class($this));
+ 
+         log_message('debug', $class . " MX_Controller Initialized");
+         Modules::$registry[strtolower($class)] = $this;
+diff --git a/composer.json b/composer.json
+index f9e8f1f2..08331af5 100644
+--- a/composer.json
++++ b/composer.json
+@@ -12,7 +12,7 @@
+     }
+   },
+   "require": {
+-    "codeigniter/framework": "3.1.13",
++    "pocketarc/codeigniter": "3.3",
+     "endroid/qr-code": "^4.8.5",
+     "guzzlehttp/guzzle": "^7.0",
+     "moneyphp/money": "^4.5",
+diff --git a/index.php b/index.php
+index 6e2b0a48..409fb00d 100755
+--- a/index.php
++++ b/index.php
+@@ -110,7 +110,7 @@ switch (ENVIRONMENT) {
+  * This variable must contain the name of your "system" directory.
+  * Set the path if it is not in the same directory as this file.
+  */
+-$system_path = 'vendor/codeigniter/framework/system';
++$system_path = 'vendor/pocketarc/codeigniter/system';
+ 
+ /*
+  *---------------------------------------------------------------
+-- 
+2.39.2
+

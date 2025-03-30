@@ -1,0 +1,39 @@
+From 2f916275a7a9ec9ed532caee76b5fc999d4edc07 Mon Sep 17 00:00:00 2001
+Message-Id: <2f916275a7a9ec9ed532caee76b5fc999d4edc07.1735481122.git.thomas@sudwebdesign.fr>
+In-Reply-To: <4928568cba9b210947aaf751462000cbc58d3e62.1735481122.git.thomas@sudwebdesign.fr>
+References: <4928568cba9b210947aaf751462000cbc58d3e62.1735481122.git.thomas@sudwebdesign.fr>
+From: Thomas Ingles <thomas@sudwebdesign.fr>
+Date: Sun, 29 Dec 2024 00:58:30 +0100
+Subject: [PATCH 2/2] Fix php 8.4 Deprecated E_STRICT
+
+See: https://www.php.net/releases/8.4/#deprecations_and_bc_breaks
+
+and
+https://github.com/pocketarc/codeigniter/commit/831108645a2b68150471035a7e5ced5086da2c51
+
+Note: minimum PHP5.3 with this change.
+---
+ index.php | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/index.php b/index.php
+index 409fb00d..5d4df98c 100755
+--- a/index.php
++++ b/index.php
+@@ -89,10 +89,10 @@ switch (ENVIRONMENT) {
+     case 'testing':
+     case 'production':
+         ini_set('display_errors', 0);
+-        if (version_compare(PHP_VERSION, '5.3', '>=')) {
+-            error_reporting(E_ALL & ~E_NOTICE & ~E_DEPRECATED & ~E_STRICT & ~E_USER_NOTICE & ~E_USER_DEPRECATED);
++        if (version_compare(PHP_VERSION, '8.4', '>=')) {
++            error_reporting(E_ALL & ~E_NOTICE & ~E_DEPRECATED & ~E_USER_NOTICE & ~E_USER_DEPRECATED);
+         } else {
+-            error_reporting(E_ALL & ~E_NOTICE & ~E_STRICT & ~E_USER_NOTICE);
++            error_reporting(E_ALL & ~E_NOTICE & ~E_DEPRECATED & ~E_STRICT & ~E_USER_NOTICE & ~E_USER_DEPRECATED);
+         }
+         break;
+ 
+-- 
+2.39.2
+
