@@ -63,6 +63,12 @@ BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
 echo "🔧 PUID=$PUID, PGID=$PGID, BUILD_DATE=$BUILD_DATE, IP_VERSION=$IP_VERSION"
 
 ###########################################
+# 🛑 Stop and Remove Existing Containers
+###########################################
+echo "🛑 Stopping and removing existing containers..."
+$DOCKER_COMPOSE down --remove-orphans --volumes
+
+###########################################
 # 🧹 Docker Cleanup (Optional)
 ###########################################
 echo "🧹 Docker cleanup..."
