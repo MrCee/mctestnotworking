@@ -118,14 +118,16 @@ set_permissions() {
     echo "✅ Permissions applied to: $dir"
 }
 
-######################################
-# Detect Docker Compose Command
-######################################
-DOCKER_COMPOSE="docker compose"
-if command -v docker-compose >/dev/null 2>&1; then
-    DOCKER_COMPOSE="docker-compose"
+###########################################
+# 🚀 Enforce Modern Docker Compose (v2)
+###########################################
+if ! command -v docker compose >/dev/null 2>&1; then
+  echo "❌ docker compose (v2) not found. Please upgrade Docker CLI."
+  exit 1
 fi
-echo "🚀 Using: $DOCKER_COMPOSE"
+
+DOCKER_COMPOSE="docker compose"
+echo "🚀 Using modern Docker Compose: $DOCKER_COMPOSE"
 
 ######################################
 # Start Containers
@@ -134,33 +136,42 @@ echo "▶️ Starting containers..."
 $DOCKER_COMPOSE up -d
 sleep 5
 
-#######################################
-## Sync SETUP_COMPLETED (container wins)
-#######################################
-#CONTAINER_NAME="invoiceplane_app"
-#IPCONFIG="/var/www/html/ipconfig.php"
-#ENV_VALUE=$(grep -E "^SETUP_COMPLETED=" "$ENV_FILE" | cut -d= -f2)
-#
-#if docker exec "$CONTAINER_NAME" test -f "$IPCONFIG" >/dev/null 2>&1; then
-#    CONTAINER_VALUE=$(docker exec "$CONTAINER_NAME" sh -c "grep '^SETUP_COMPLETED=' $IPCONFIG | cut -d= -f2")
-#
-#    echo "🌐 Container SETUP_COMPLETED: $CONTAINER_VALUE"
-#    echo "🧾 .env SETUP_COMPLETED: $ENV_VALUE"
-#
-#    if [[ "$CONTAINER_VALUE" != "$ENV_VALUE" ]]; then
-#        if [[ "$CONTAINER_VALUE" == "true" ]]; then
-#            echo "✅ Setup complete. Syncing .env → SETUP_COMPLETED=true"
-#            sed -i.bak 's/^SETUP_COMPLETED=.*/SETUP_COMPLETED=true/' "$ENV_FILE"
-#        else
-#            echo "🔁 Container not ready. Syncing .env → SETUP_COMPLETED=false"
-#            sed -i.bak 's/^SETUP_COMPLETED=.*/SETUP_COMPLETED=false/' "$ENV_FILE"
-#        fi
-#        echo "✅ .env synced with container"
-#    else
-#        echo "🔄 SETUP_COMPLETED is in sync"
-#    fi
-#else
-#    echo "⚠️ Container not ready or ipconfig.php not found — skipping SETUP_COMPLETED sync"
-#fi
+###########################################
+# 🔄 Sync SETUP_COMPLETED Between Container & .env
+###########################################
+CONTAINER_NAME="${IP_CONTAINER_NAME:-invoiceplane_app}"
+ENV_FILE=".env"
+IPCONFIG="/var/www/html/ipconfig.php"
 
+echo "🔍 Checking setup completion state..."
+
+if docker exec "$CONTAINER_NAME" test -f "$IPCONFIG" >/dev/null 2>&1; then
+    CONTAINER_VALUE=$(docker exec "$CONTAINER_NAME" sh -c "grep '^SETUP_COMPLETED=' $IPCONFIG | cut -d= -f2 | tr -d '\r\n'")
+    ENV_VALUE=$(grep -E "^SETUP_COMPLETED=" "$ENV_FILE" | cut -d= -f2 | tr -d '\r\n')
+
+    echo "🌐 Container: SETUP_COMPLETED=$CONTAINER_VALUE"
+    echo "🧾 .env:      SETUP_COMPLETED=$ENV_VALUE"
+
+    if [[ "$CONTAINER_VALUE" != "$ENV_VALUE" ]]; then
+        echo "⚠️  Mismatch detected — syncing .env to match container state..."
+
+        if [[ "$CONTAINER_VALUE" == "true" ]]; then
+            sed -i.bak 's/^SETUP_COMPLETED=.*/SETUP_COMPLETED=true/' "$ENV_FILE"
+            echo "✅ .env updated: SETUP_COMPLETED=true"
+        else
+            sed -i.bak 's/^SETUP_COMPLETED=.*/SETUP_COMPLETED=false/' "$ENV_FILE"
+            echo "🔁 .env updated: SETUP_COMPLETED=false"
+        fi
+
+        echo "🔁 Restarting container to reflect updated .env..."
+        docker compose down
+        docker compose up -d
+
+        echo "✅ Container restarted and now in sync."
+    else
+        echo "🔄 SETUP_COMPLETED already in sync. No action needed."
+    fi
+else
+    echo "⚠️  ipconfig.php not found in container — skipping setup sync."
+fi
 

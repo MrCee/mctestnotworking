@@ -29,8 +29,16 @@ read -rp "Type 'y' to continue: " INITIAL_CONFIRM
 DOCKER_BUILDX="docker buildx"
 command -v docker-buildx >/dev/null 2>&1 && DOCKER_BUILDX="docker-buildx"
 
+###########################################
+# 🚀 Enforce Docker Compose v2+
+###########################################
+if ! command -v docker compose >/dev/null 2>&1; then
+  echo "❌ docker compose (v2) not found. Please upgrade Docker."
+  exit 1
+fi
+
 DOCKER_COMPOSE="docker compose"
-command -v docker-compose >/dev/null 2>&1 && DOCKER_COMPOSE="docker-compose"
+echo "🚀 Using: $DOCKER_COMPOSE"
 
 ###########################################
 # ♻️ Optional Cleanup Prompt
