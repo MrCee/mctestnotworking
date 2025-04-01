@@ -114,7 +114,10 @@ echo "🔐 Adjusting ownership and permissions..."
 OWN_DIRS="/var/www/html/uploads /var/www/html/assets/core/css /var/www/html/application/views /var/www/html/application/language/${IP_LANGUAGE}"
 
 if [ "$HOST_OS" = "macos" ]; then
-    echo "🔧 macOS detected: skipping chown"
+    echo "🔧 macOS detected: skipping chown, relaxing permissions..."
+    for dir in $OWN_DIRS; do
+        [ -d "$dir" ] && chmod -R 777 "$dir" && echo "🔓 chmod 777 on $dir (macOS fallback)"
+    done
 else
     for dir in $OWN_DIRS; do
         if [ -d "$dir" ]; then

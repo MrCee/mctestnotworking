@@ -54,30 +54,6 @@ awk -v PUID="$PUID" -v PGID="$PGID" -v HOST_OS="$HOST_OS" -v MYSQL_UID="$MYSQL_U
 ' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
 echo "✅ .env updated"
 
-#######################################
-## INSTALL_MODE: init / rerun / repair
-#######################################
-#MODE=$(grep -E "^INSTALL_MODE=" "$ENV_FILE" | cut -d= -f2)
-#
-#if [ "$MODE" = "init" ]; then
-#    echo "🆕 INSTALL_MODE=init → First-time setup"
-#    INSTALL_MODE_NEXT="rerun"
-#elif [ "$MODE" = "repair" ]; then
-#    echo "🧰 INSTALL_MODE=repair → Running repair logic"
-#    INSTALL_MODE_NEXT="repair"
-#else
-#    echo "🔁 INSTALL_MODE=$MODE → Assuming rerun"
-#    INSTALL_MODE_NEXT="$MODE"
-#fi
-#
-#if [ "$INSTALL_MODE_NEXT" != "$MODE" ]; then
-#    echo "🔄 Updating INSTALL_MODE in $ENV_FILE → $INSTALL_MODE_NEXT"
-#    awk -v mode="$INSTALL_MODE_NEXT" 'BEGIN {FS=OFS="="}
-#      $1=="INSTALL_MODE" {$2=mode}
-#      {print}
-#    ' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
-#    echo "✅ INSTALL_MODE updated to $INSTALL_MODE_NEXT"
-#fi
 
 ######################################
 # Create Required Directories
