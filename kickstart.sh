@@ -164,8 +164,8 @@ if docker exec "$CONTAINER_NAME" test -f "$IPCONFIG" >/dev/null 2>&1; then
         fi
 
         echo "🔁 Restarting container to reflect updated .env..."
-        docker compose down
-        docker compose up -d
+        $DOCKER_COMPOSE down
+        $DOCKER_COMPOSE up -d
 
         echo "✅ Container restarted and now in sync."
     else
@@ -174,4 +174,14 @@ if docker exec "$CONTAINER_NAME" test -f "$IPCONFIG" >/dev/null 2>&1; then
 else
     echo "⚠️  ipconfig.php not found in container — skipping setup sync."
 fi
+
+###########################################
+# 📡 Live Log Tail (Recommended for Devs)
+###########################################
+echo ""
+echo "📡 Tailing logs for: $CONTAINER_NAME"
+echo "💡 Press Ctrl+C to exit logs view."
+sleep 2
+$DOCKER_COMPOSE logs -f "$CONTAINER_NAME"
+
 

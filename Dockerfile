@@ -119,8 +119,7 @@ FROM base
 # Copy configs and startup scripts
 COPY setup/php.ini /usr/local/etc/php/php.ini
 COPY setup/www.conf /usr/local/etc/php-fpm.d/www.conf
-COPY setup/nginx.conf /etc/nginx/nginx.conf
-# COPY setup/default.conf /etc/nginx/http.d/default.conf
+COPY setup/default.conf /etc/nginx/http.d/default.conf
 COPY setup/start.sh /usr/local/bin/start.sh
 COPY setup/wait-for-db.sh /usr/local/bin/wait-for-db.sh
 RUN chmod +x /usr/local/bin/start.sh /usr/local/bin/wait-for-db.sh \
