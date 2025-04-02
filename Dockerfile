@@ -24,6 +24,7 @@ ENV PHP_VERSION=${PHP_VERSION} \
 
 # Install runtime & build deps (split for cleanup)
 RUN apk add --no-cache \
+      vim \
       patch \
       curl \
       unzip \
