@@ -44,40 +44,34 @@ else
 fi
 
 ######################################
-# 👤 Dynamic User Setup (Linux Only)
+# 👤 Dynamic User Setup (Cross-Platform)
 ######################################
 echo "🔍 Checking and configuring user:group abc:abc..."
 PUID=${PUID:-911}
 PGID=${PGID:-911}
 HOST_OS=${HOST_OS:-linux}
 
-if [ "$HOST_OS" != "macos" ]; then
-    echo "⚙️ Setting up abc:abc with UID=$PUID and GID=$PGID"
+if [ "$HOST_OS" = "macos" ]; then
+    echo "🍏 macOS environment detected — enabling group access for host GID $PGID"
+    
+    # Use direct GID mapping (no group name needed)
+    usermod -aG "$PGID" www-data && echo "✅ www-data added to GID $PGID" || echo "⚠️ Failed to add www-data"
+    usermod -aG "$PGID" nginx && echo "✅ nginx added to GID $PGID" || echo "⚠️ Failed to add nginx"
+
+elif [ "$HOST_OS" = "linux" ]; then
+    echo "🐧 Linux environment detected — configuring abc user with UID=$PUID and GID=$PGID"
+
     getent group abc >/dev/null || groupadd -g "$PGID" abc
     id abc >/dev/null 2>&1 || useradd -M -s /bin/false -u "$PUID" -g abc abc
     usermod -o -u "$PUID" abc
     groupmod -o -g "$PGID" abc
 
-    ######################################
-    # 🔐 Adjust Group Access for Bind Mounts
-    ######################################
-    echo "🔐 Adding www-data and nginx users to host group (GID=$PGID)..."
+    # Optional: Add www-data/nginx to abc's group (helpful if they need access to abc-owned mounts)
+    usermod -aG "$PGID" www-data && echo "✅ www-data added to GID $PGID" || echo "⚠️ Failed to add www-data"
+    usermod -aG "$PGID" nginx && echo "✅ nginx added to GID $PGID" || echo "⚠️ Failed to add nginx"
 
-    getent group hostgroup >/dev/null || groupadd -g "$PGID" hostgroup
-
-    usermod -aG hostgroup www-data && \
-        echo "✅ www-data added to group $PGID" || \
-        echo "⚠️ Could not add www-data to group $PGID"
-
-    if id nginx >/dev/null 2>&1; then
-        usermod -aG hostgroup nginx && \
-            echo "✅ nginx added to group $PGID" || \
-            echo "⚠️ Could not add nginx to group $PGID"
-    else
-        echo "ℹ️ 'nginx' user not found — skipping group assignment"
-    fi
 else
-    echo "ℹ️ macOS detected, skipping user modification."
+    echo "❓ Unknown HOST_OS: $HOST_OS — skipping dynamic user setup."
 fi
 
 ######################################
@@ -133,11 +127,14 @@ echo "🔐 Adjusting ownership and permissions..."
 OWN_DIRS="/var/www/html/uploads /var/www/html/assets/core/css /var/www/html/application/views /var/www/html/application/language/${IP_LANGUAGE}"
 
 if [ "$HOST_OS" = "macos" ]; then
-    echo "🔧 macOS detected: skipping chown, relaxing permissions..."
+    echo "🔧 macOS detected: skipping chown, checking permissions..."
     for dir in $OWN_DIRS; do
-        [ -d "$dir" ] && chmod -R 777 "$dir" && echo "🔓 chmod 777 on $dir (macOS fallback)"
+        if [ -d "$dir" ]; then
+            chmod -R 775 "$dir"
+            echo "🔧 Applied 775 and chown to $dir"
+        fi
     done
-else
+        else
     for dir in $OWN_DIRS; do
         if [ -d "$dir" ]; then
             chown -R abc:abc "$dir"
