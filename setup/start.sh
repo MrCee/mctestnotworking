@@ -57,6 +57,25 @@ if [ "$HOST_OS" != "macos" ]; then
     id abc >/dev/null 2>&1 || useradd -M -s /bin/false -u "$PUID" -g abc abc
     usermod -o -u "$PUID" abc
     groupmod -o -g "$PGID" abc
+
+    ######################################
+    # 🔐 Adjust Group Access for Bind Mounts
+    ######################################
+    echo "🔐 Adding www-data and nginx users to host group (GID=$PGID)..."
+
+    getent group hostgroup >/dev/null || groupadd -g "$PGID" hostgroup
+
+    usermod -aG hostgroup www-data && \
+        echo "✅ www-data added to group $PGID" || \
+        echo "⚠️ Could not add www-data to group $PGID"
+
+    if id nginx >/dev/null 2>&1; then
+        usermod -aG hostgroup nginx && \
+            echo "✅ nginx added to group $PGID" || \
+            echo "⚠️ Could not add nginx to group $PGID"
+    else
+        echo "ℹ️ 'nginx' user not found — skipping group assignment"
+    fi
 else
     echo "ℹ️ macOS detected, skipping user modification."
 fi
