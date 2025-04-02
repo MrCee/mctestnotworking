@@ -70,10 +70,8 @@ RUN apk add --no-cache \
   && rm -rf /var/cache/apk/* /tmp/* /usr/src/php*
 
 # Runtime dirs
-RUN mkdir -p /run/php /var/tmp && \
-    chmod 1777 /var/tmp && \
-    chmod 770 /run/php && \
-    chown -R www-data:nginx /run/php
+RUN mkdir -p /var/tmp && \
+    chmod 1777 /var/tmp
 
 # --------------------------------------------
 # Stage 1: Composer Builder (download + patch + install)
