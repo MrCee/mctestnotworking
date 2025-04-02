@@ -74,7 +74,7 @@ set_permissions() {
     local perms="775"
 
     if [ "$HOST_OS" = "macos" ]; then
-        perms="777"
+        perms="775"
     fi
 
     if [[ "$dir" == "./mariadb" ]]; then
