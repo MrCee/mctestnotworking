@@ -22,14 +22,15 @@ ENV PHP_VERSION=${PHP_VERSION} \
     TMPDIR=/var/tmp \
     BUILD_DATE=${BUILD_DATE}
 
-# Install runtime & build deps (split for cleanup)
+# Install runtime & build deps
 RUN apk add --no-cache \
-      vim \
-      patch \
-      curl \
-      unzip \
       nginx \
       mariadb-client \
+      vim \
+      curl \
+      unzip \
+      patch \
+      bash \
       shadow \
       libwebp \
       libpng \
@@ -39,8 +40,8 @@ RUN apk add --no-cache \
       oniguruma \
       libxml2 \
       libxslt \
-      libxpm \
-  && apk add --no-cache --virtual .build-deps \
+      libxpm && \
+    apk add --no-cache --virtual .build-deps \
       build-base \
       linux-headers \
       autoconf \
@@ -63,22 +64,21 @@ RUN apk add --no-cache \
       oniguruma-dev \
       libxml2-dev \
       libxslt-dev \
-      libxpm-dev \
-  && docker-php-ext-configure gd \
-      --enable-gd --with-freetype --with-jpeg --with-webp --with-xpm --enable-gd-jis-conv \
-  && docker-php-ext-install -j$(nproc) gd intl bcmath dom mysqli \
-  && apk del .build-deps \
-  && rm -rf /var/cache/apk/* /tmp/* /usr/src/php*
+      libxpm-dev && \
+    docker-php-ext-configure gd \
+      --enable-gd --with-freetype --with-jpeg --with-webp --with-xpm --enable-gd-jis-conv && \
+    docker-php-ext-install -j$(nproc) gd intl bcmath dom mysqli && \
+    apk del .build-deps && \
+    rm -rf /var/cache/apk/* /tmp/* /usr/src/php*
 
 # Runtime dirs
-RUN mkdir -p /var/tmp && \
-    chmod 1777 /var/tmp
+RUN mkdir -p /var/tmp && chmod 1777 /var/tmp
+RUN mkdir -p /run && chown www-data:nginx /run
 
 # --------------------------------------------
 # Stage 1: Composer Builder (download + patch + install)
 # --------------------------------------------
 FROM base AS composer-builder
-
 WORKDIR /build
 
 # Install Composer
@@ -91,10 +91,10 @@ RUN VERSION=$(echo ${IP_VERSION} | grep -q '^v' && echo ${IP_VERSION} || echo "v
     mv /tmp/ip/* /build && \
     rm -rf /tmp/app.zip /tmp/ip
 
-# Remove outdated vendor
+# Remove vendor & re-install clean
 RUN rm -rf /build/vendor
 
-# Copy in patches and apply them
+COPY composer.json composer.lock /build/
 COPY patches /tmp/patches
 RUN if [ -d /tmp/patches ] && [ "$(ls -A /tmp/patches)" ]; then \
       echo "🩹 Applying patches from /tmp/patches..."; \
@@ -105,8 +105,6 @@ RUN if [ -d /tmp/patches ] && [ "$(ls -A /tmp/patches)" ]; then \
       done; \
     fi && rm -rf /tmp/patches
 
-# Composer install (after patching)
-COPY composer.json composer.lock /build/
 WORKDIR /build
 RUN composer install --no-dev --optimize-autoloader
 
@@ -115,29 +113,39 @@ RUN composer install --no-dev --optimize-autoloader
 # --------------------------------------------
 FROM base
 
-# Copy configs and startup scripts
+# 🌍 Working directory
+WORKDIR /var/www/html
+
+# 📦 Copy application files
+COPY --from=composer-builder /build /var/www/html
+
+# 🔄 Copy default fallback for bind-mounts
+RUN mkdir -p /var/www/html_default && \
+    cp -a /var/www/html/. /var/www/html_default/
+
+# 📁 Configs and scripts
 COPY setup/php.ini /usr/local/etc/php/php.ini
 COPY setup/www.conf /usr/local/etc/php-fpm.d/www.conf
 COPY setup/default.conf /etc/nginx/http.d/default.conf
-COPY setup/start.sh /usr/local/bin/start.sh
 COPY setup/wait-for-db.sh /usr/local/bin/wait-for-db.sh
 COPY setup/verify-permissions.sh /usr/local/bin/verify-permissions.sh
-RUN chmod +x /usr/local/bin/start.sh /usr/local/bin/wait-for-db.sh /usr/local/bin/verify-permissions.sh \
- && mv /usr/local/etc/php-fpm.d/zz-docker.conf /usr/local/etc/php-fpm.d/zz-docker.disabled || true
-
-# App files (patched and installed)
-COPY --from=composer-builder /build /var/www/html
-
-# Optional .env fallback
+COPY setup/setup-watcher.sh /usr/local/bin/setup-watcher.sh
+COPY setup/custom-complete.php /usr/local/share/custom-complete.php
+COPY kickstart.sh /usr/local/bin/kickstart.sh 
 COPY .env.example /var/www/html/.env.example
+RUN mv /usr/local/etc/php-fpm.d/zz-docker.conf /usr/local/etc/php-fpm.d/zz-docker.disabled || true
 
-# Backup baseline app state to _html_default_ for bind-mounts
-RUN mkdir -p /var/www/html_default && \
-    cp -a /var/www/html/. /var/www/html_default/ && \
+# 🚀 Final ENTRYPOINT: Smart cross-platform bootstrapper
+COPY setup/entrypoint.sh /usr/local/bin/entrypoint.sh
+
+# ✅ Permissions & ownership
+RUN chmod +x /usr/local/bin/*.sh && \
     chown -R www-data:nginx /var/www/html /var/www/html_default
 
+# 🔥 Expose port 80
 EXPOSE 80
-ENTRYPOINT ["/usr/local/bin/start.sh"]
-CMD ["nginx", "-g", "daemon off;"]
+
+# 🧠 Entrypoint now handles everything (env, config, services)
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 

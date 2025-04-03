@@ -1,4 +1,5 @@
 #!/bin/sh
+set -e
 
 echo "🔄 Starting InvoicePlane container..."
 
@@ -43,6 +44,31 @@ else
     echo "✅ ipconfig.php found"
 fi
 
+##############################################
+# 🧩 Override Setup Complete Page (Custom UX)
+##############################################
+CUSTOM_COMPLETE="/usr/local/share/custom-complete.php"
+TARGET_COMPLETE="/var/www/html/application/modules/setup/views/complete.php"
+
+if ! grep -q "🎉 Setup Complete!" "$TARGET_COMPLETE"; then
+    echo "🧩 Applying custom complete.php page"
+    cp "$CUSTOM_COMPLETE" "$TARGET_COMPLETE"
+else
+    echo "✅ Custom complete page already applied"
+fi
+
+######################################
+# 👀 Background Watcher for Setup Mode
+######################################
+CONFIG_FILE="/var/www/html/ipconfig.php"
+
+if grep -q "^SETUP_COMPLETED=false" "$CONFIG_FILE"; then
+    echo "🔄 Setup incomplete — launching setup watcher..."
+    /usr/local/bin/setup-watcher.sh &
+else
+    echo "✅ Setup already marked as complete — no watcher needed"
+fi
+
 ######################################
 # 👤 Dynamic User Setup (Cross-Platform)
 ######################################
@@ -53,7 +79,7 @@ HOST_OS=${HOST_OS:-linux}
 
 if [ "$HOST_OS" = "macos" ]; then
     echo "🍏 macOS environment detected — enabling group access for host GID $PGID"
-    
+
     # Use direct GID mapping (no group name needed)
     usermod -aG "$PGID" www-data && echo "✅ www-data added to GID $PGID" || echo "⚠️ Failed to add www-data"
     usermod -aG "$PGID" nginx && echo "✅ nginx added to GID $PGID" || echo "⚠️ Failed to add nginx"
@@ -127,14 +153,14 @@ echo "🔐 Adjusting ownership and permissions..."
 OWN_DIRS="/var/www/html/uploads /var/www/html/assets/core/css /var/www/html/application/views /var/www/html/application/language/${IP_LANGUAGE}"
 
 if [ "$HOST_OS" = "macos" ]; then
-    echo "🔧 macOS detected: skipping chown, checking permissions..."
+    echo "🔧 macOS detected: skipping chown, applying 775..."
     for dir in $OWN_DIRS; do
         if [ -d "$dir" ]; then
             chmod -R 775 "$dir"
-            echo "🔧 Applied 775 and chown to $dir"
+            echo "🔧 Applied 775 to $dir"
         fi
     done
-        else
+else
     for dir in $OWN_DIRS; do
         if [ -d "$dir" ]; then
             chown -R abc:abc "$dir"
@@ -157,7 +183,8 @@ update_config() {
         sed -i "s|^$key=.*|$key=$value|" "$CONFIG_FILE"
         echo "🔧 Updated $key=$value in ipconfig.php"
     else
-        echo "⚠️ $key not found in ipconfig.php"
+        echo "$key=$value" >> "$CONFIG_FILE"
+        echo "➕ Added $key=$value to ipconfig.php"
     fi
 }
 
@@ -194,6 +221,5 @@ sleep 2
 
 echo "🌍 Starting Nginx..."
 exec nginx -g "daemon off;"
-
 
 

@@ -2,7 +2,7 @@ services:
   invoiceplane_app:
     image: ${IP_IMAGE}:${IP_VERSION}
     container_name: ${IP_CONTAINER_NAME}
-    restart: unless-stopped
+    restart: always
     env_file:
       - .env
     build:
